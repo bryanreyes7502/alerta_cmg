@@ -25,10 +25,12 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
-      - name: Configurar Chrome
-        uses: browser-actions/setup-chrome@v2
-        with:
-          chrome-version: stable
+      - name: Verificar Chrome y ChromeDriver preinstalados
+        run: |
+          google-chrome --version
+          chromedriver --version
+          echo "CHROME_BIN=$CHROME_BIN"
+          echo "CHROMEWEBDRIVER=$CHROMEWEBDRIVER"
 
       - name: Configurar Python
         uses: actions/setup-python@v5
