@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -179,7 +180,37 @@ def crear_driver() -> webdriver.Chrome:
             "safebrowsing.enabled": True,
         },
     )
-    return webdriver.Chrome(options=options)
+
+    # GitHub-hosted Ubuntu runners ya incluyen Chrome y ChromeDriver.
+    # Al indicar explícitamente sus rutas evitamos que Selenium Manager
+    # intente descargar otro driver durante la ejecución.
+    chrome_binary = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome")
+    chromedriver_binary = os.environ.get(
+        "CHROMEDRIVER",
+        os.environ.get("CHROMEWEBDRIVER", "/usr/bin/chromedriver"),
+    )
+
+    if not os.path.exists(chrome_binary):
+        candidates = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+        ]
+        chrome_binary = next((p for p in candidates if os.path.exists(p)), chrome_binary)
+
+    if not os.path.exists(chromedriver_binary):
+        candidates = [
+            "/usr/local/share/chromedriver-linux64/chromedriver",
+            "/usr/bin/chromedriver",
+        ]
+        chromedriver_binary = next(
+            (p for p in candidates if os.path.exists(p)), chromedriver_binary
+        )
+
+    options.binary_location = chrome_binary
+    return webdriver.Chrome(
+        service=Service(chromedriver_binary),
+        options=options,
+    )
 
 
 def descargar_csv(fecha: str) -> Path | None:
@@ -454,3 +485,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
