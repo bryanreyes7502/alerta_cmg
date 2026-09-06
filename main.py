@@ -182,33 +182,51 @@ def crear_driver() -> webdriver.Chrome:
     )
 
     # GitHub-hosted Ubuntu runners ya incluyen Chrome y ChromeDriver.
-    # Al indicar explícitamente sus rutas evitamos que Selenium Manager
-    # intente descargar otro driver durante la ejecución.
-    chrome_binary = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome")
-    chromedriver_binary = os.environ.get(
-        "CHROMEDRIVER",
-        os.environ.get("CHROMEWEBDRIVER", "/usr/bin/chromedriver"),
-    )
-
-    if not os.path.exists(chrome_binary):
-        candidates = [
+    # CHROMEWEBDRIVER apunta a un DIRECTORIO, no al ejecutable; por eso
+    # debemos añadir /chromedriver cuando la variable venga definida.
+    chrome_binary = os.environ.get("CHROME_BIN")
+    if not chrome_binary:
+        for candidate in (
             "/usr/bin/google-chrome",
             "/usr/bin/google-chrome-stable",
-        ]
-        chrome_binary = next((p for p in candidates if os.path.exists(p)), chrome_binary)
+        ):
+            if os.path.isfile(candidate):
+                chrome_binary = candidate
+                break
 
-    if not os.path.exists(chromedriver_binary):
-        candidates = [
-            "/usr/local/share/chromedriver-linux64/chromedriver",
+    driver_env = os.environ.get("CHROMEDRIVER") or os.environ.get("CHROMEWEBDRIVER")
+    chromedriver_binary = None
+
+    if driver_env:
+        # Puede ser el ejecutable o el directorio que contiene al ejecutable.
+        if os.path.isfile(driver_env):
+            chromedriver_binary = driver_env
+        elif os.path.isdir(driver_env):
+            candidate = os.path.join(driver_env, "chromedriver")
+            if os.path.isfile(candidate):
+                chromedriver_binary = candidate
+
+    if not chromedriver_binary:
+        for candidate in (
             "/usr/bin/chromedriver",
-        ]
-        chromedriver_binary = next(
-            (p for p in candidates if os.path.exists(p)), chromedriver_binary
-        )
+            "/usr/local/bin/chromedriver",
+            "/usr/local/share/chromedriver-linux64/chromedriver",
+        ):
+            if os.path.isfile(candidate):
+                chromedriver_binary = candidate
+                break
+
+    if not chrome_binary:
+        raise RuntimeError("No se encontró Google Chrome en el runner de GitHub.")
+    if not chromedriver_binary:
+        raise RuntimeError("No se encontró el ejecutable chromedriver en el runner de GitHub.")
+
+    log(f"Chrome: {chrome_binary}")
+    log(f"ChromeDriver: {chromedriver_binary}")
 
     options.binary_location = chrome_binary
     return webdriver.Chrome(
-        service=Service(chromedriver_binary),
+        service=Service(executable_path=chromedriver_binary),
         options=options,
     )
 
@@ -485,4 +503,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
