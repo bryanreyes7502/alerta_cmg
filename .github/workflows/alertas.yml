@@ -16,7 +16,7 @@ permissions:
 jobs:
   ejecutar:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 6
 
     steps:
       - name: Descargar repositorio
@@ -24,6 +24,11 @@ jobs:
         with:
           persist-credentials: true
           fetch-depth: 0
+
+      - name: Configurar Chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -40,6 +45,7 @@ jobs:
         run: python main.py
 
       - name: Guardar estado de alertas
+        if: always()
         run: |
           if git diff --quiet -- state/state.json; then
             echo "Sin cambios en el estado."
